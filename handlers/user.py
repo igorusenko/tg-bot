@@ -33,7 +33,7 @@ def _calendar_range() -> tuple[date, date]:
 
 
 async def _show_main_menu(message: Message, settings: Settings) -> None:
-    is_admin = message.from_user and message.from_user.id == settings.admin_id
+    is_admin = bool(message.from_user) and message.from_user.id in settings.admin_ids
     await message.answer(
         "<b>Добро пожаловать в бот записи мастера по маникюру</b>\n"
         "Выберите нужный раздел:",
@@ -73,7 +73,7 @@ async def cmd_start(message: Message, settings: Settings) -> None:
 @user_router.callback_query(F.data == "menu:back")
 async def menu_back(callback: CallbackQuery, state: FSMContext, settings: Settings) -> None:
     await state.clear()
-    is_admin = callback.from_user.id == settings.admin_id
+    is_admin = callback.from_user.id in settings.admin_ids
     await callback.message.edit_text(
         "<b>Главное меню</b>\nВыберите действие:",
         reply_markup=main_menu(is_admin=is_admin),
@@ -88,7 +88,7 @@ async def ignore_click(callback: CallbackQuery) -> None:
 
 @user_router.callback_query(F.data == "menu:prices")
 async def prices(callback: CallbackQuery, settings: Settings) -> None:
-    is_admin = callback.from_user.id == settings.admin_id
+    is_admin = callback.from_user.id in settings.admin_ids
     await callback.message.edit_text(
         "<b>Прайсы</b>\n\n"
         "Френч — <b>1000₽</b>\n"
@@ -281,7 +281,8 @@ async def confirm_booking(
         f"Клиент: <b>{booking['full_name']}</b>"
     )
     await callback.message.edit_text(user_text, reply_markup=my_booking_keyboard())
-    await callback.bot.send_message(settings.admin_id, owner_text)
+    for admin_id in settings.admin_ids:
+        await callback.bot.send_message(admin_id, owner_text)
     await callback.bot.send_message(settings.channel_id, channel_text)
     await state.clear()
     await callback.answer()
@@ -291,7 +292,7 @@ async def confirm_booking(
 async def my_booking(callback: CallbackQuery, repo: BookingRepository, settings: Settings) -> None:
     booking = await repo.get_user_booking(callback.from_user.id)
     if not booking:
-        is_admin = callback.from_user.id == settings.admin_id
+        is_admin = callback.from_user.id in settings.admin_ids
         await callback.message.edit_text(
             "У вас пока нет активной записи.",
             reply_markup=main_menu(is_admin=is_admin),
@@ -323,7 +324,7 @@ async def cancel_booking(
         return
 
     await reminder_service.remove_for_booking(booking)
-    is_admin = callback.from_user.id == settings.admin_id
+    is_admin = callback.from_user.id in settings.admin_ids
     await callback.message.edit_text("Запись успешно отменена.", reply_markup=main_menu(is_admin=is_admin))
     await callback.bot.send_message(
         settings.channel_id,

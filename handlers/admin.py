@@ -17,7 +17,7 @@ admin_router = Router()
 
 
 def _admin_only(callback: CallbackQuery, settings: Settings) -> bool:
-    return callback.from_user.id == settings.admin_id
+    return callback.from_user.id in settings.admin_ids
 
 
 def _calendar_range() -> tuple[date, date]:
@@ -163,7 +163,7 @@ async def add_slot_pick_day(callback: CallbackQuery, settings: Settings, repo: B
 
 @admin_router.message(AdminStates.entering_slot_time)
 async def add_slot_done(message: Message, settings: Settings, repo: BookingRepository, state: FSMContext) -> None:
-    if message.from_user.id != settings.admin_id:
+    if message.from_user.id not in settings.admin_ids:
         return
     time_value = message.text.strip()
     try:
